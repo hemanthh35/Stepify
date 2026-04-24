@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   CartesianGrid,
@@ -36,15 +36,82 @@ function buildPlotData(content) {
   return rows.length >= 2 ? rows : null;
 }
 
+function toEditableRows(data) {
+  return data.map((d, index) => ({
+    id: `${index}-${d.x}-${d.y}`,
+    x: String(d.x),
+    y: String(d.y),
+  }));
+}
+
+function toNumericRows(rows) {
+  const parsed = rows
+    .map((row) => ({ x: Number(row.x), y: Number(row.y) }))
+    .filter((row) => Number.isFinite(row.x) && Number.isFinite(row.y));
+  return parsed.length >= 2 ? parsed : null;
+}
+
+function calculateTrendline(points) {
+  if (!points || points.length < 2) {
+    return null;
+  }
+  const n = points.length;
+  let sumX = 0;
+  let sumY = 0;
+  let sumXY = 0;
+  let sumXX = 0;
+
+  for (let i = 0; i < n; i += 1) {
+    const { x, y } = points[i];
+    sumX += x;
+    sumY += y;
+    sumXY += x * y;
+    sumXX += x * x;
+  }
+
+  const denominator = n * sumXX - sumX * sumX;
+  if (denominator === 0) {
+    return null;
+  }
+  const slope = (n * sumXY - sumX * sumY) / denominator;
+  const intercept = (sumY - slope * sumX) / n;
+
+  const sorted = [...points].sort((a, b) => a.x - b.x);
+  const minX = sorted[0].x;
+  const maxX = sorted[sorted.length - 1].x;
+  return {
+    slope,
+    intercept,
+    lineData: [
+      { x: minX, y: slope * minX + intercept },
+      { x: maxX, y: slope * maxX + intercept },
+    ],
+  };
+}
+
 export function InteractiveRenderer({ step }) {
   const type = step.interactionType || 'text';
   const content = step.content && typeof step.content === 'object' ? step.content : {};
+  const basePlotData = useMemo(() => {
+    const x = Array.isArray(content.x) ? content.x : [];
+    const y = Array.isArray(content.y) ? content.y : [];
+    return buildPlotData({ x, y });
+  }, [content.x, content.y]);
 
   const [demoResult, setDemoResult] = useState(null);
   const sliderMin = Number.isFinite(Number(content.sliderMin)) ? Number(content.sliderMin) : 0;
   const sliderMax = Number.isFinite(Number(content.sliderMax)) ? Number(content.sliderMax) : 100;
   const initialSlider = clamp(50, sliderMin, sliderMax);
   const [sliderValue, setSliderValue] = useState(initialSlider);
+  const [editableRows, setEditableRows] = useState(basePlotData ? toEditableRows(basePlotData) : []);
+
+  useEffect(() => {
+    if (basePlotData) {
+      setEditableRows(toEditableRows(basePlotData));
+    } else {
+      setEditableRows([]);
+    }
+  }, [basePlotData]);
 
   if (type === 'button_demo') {
     return (
@@ -125,17 +192,33 @@ export function InteractiveRenderer({ step }) {
   }
 
   if (type === 'plot') {
-    const data = buildPlotData(content);
     const plotType = ['line', 'bar', 'scatter'].includes(content.plotType) ? content.plotType : 'line';
     const xLabel = content.xLabel || 'X';
     const yLabel = content.yLabel || 'Y';
-    if (!data) {
+    const data = toNumericRows(editableRows);
+    const showRegression = plotType !== 'bar';
+    const trend = showRegression ? calculateTrendline(data) : null;
+
+    if (!basePlotData) {
       return (
         <div className="mt-4 rounded-lg border border-line bg-surfaceMuted p-4 text-sm text-gray-800">
           Plot data is missing or invalid for this step.
         </div>
       );
     }
+
+    const updateRow = (id, key, value) => {
+      setEditableRows((prev) => prev.map((row) => (row.id === id ? { ...row, [key]: value } : row)));
+    };
+
+    const addPoint = () => {
+      setEditableRows((prev) => [...prev, { id: `${Date.now()}-${prev.length}`, x: '0', y: '0' }]);
+    };
+
+    const removePoint = (id) => {
+      setEditableRows((prev) => (prev.length <= 2 ? prev : prev.filter((row) => row.id !== id)));
+    };
+
     return (
       <div className="mt-4 rounded-lg border border-line bg-white p-4">
         {content.plotTitle ? <p className="mb-3 text-sm font-medium text-ink">{content.plotTitle}</p> : null}
@@ -157,6 +240,7 @@ export function InteractiveRenderer({ step }) {
                 <YAxis type="number" dataKey="y" name={yLabel} label={{ value: yLabel, angle: -90, position: 'insideLeft' }} />
                 <Tooltip cursor={{ strokeDasharray: '3 3' }} />
                 <Scatter data={data} fill="#7C3AED" />
+                {trend ? <Line data={trend.lineData} dataKey="y" stroke="#059669" strokeWidth={2} dot={false} legendType="none" /> : null}
               </ScatterChart>
             ) : null}
             {plotType === 'line' ? (
@@ -166,9 +250,52 @@ export function InteractiveRenderer({ step }) {
                 <YAxis label={{ value: yLabel, angle: -90, position: 'insideLeft' }} />
                 <Tooltip />
                 <Line type="monotone" dataKey="y" stroke="#7C3AED" strokeWidth={2} dot={false} />
+                {trend ? <Line data={trend.lineData} dataKey="y" stroke="#059669" strokeWidth={2} dot={false} /> : null}
               </LineChart>
             ) : null}
           </ResponsiveContainer>
+        </div>
+        <div className="mt-4 rounded-lg border border-line bg-surfaceMuted p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">Edit data points</p>
+            <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={addPoint}>
+              Add point
+            </button>
+          </div>
+          <div className="space-y-2">
+            {editableRows.map((row, index) => (
+              <div key={row.id} className="grid grid-cols-[1fr,1fr,auto] items-center gap-2">
+                <input
+                  type="number"
+                  value={row.x}
+                  onChange={(e) => updateRow(row.id, 'x', e.target.value)}
+                  className="input py-2 text-xs"
+                  aria-label={`${xLabel} value ${index + 1}`}
+                />
+                <input
+                  type="number"
+                  value={row.y}
+                  onChange={(e) => updateRow(row.id, 'y', e.target.value)}
+                  className="input py-2 text-xs"
+                  aria-label={`${yLabel} value ${index + 1}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => removePoint(row.id)}
+                  className="btn-secondary px-2 py-1.5 text-xs"
+                  disabled={editableRows.length <= 2}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+          {!data ? <p className="mt-2 text-xs text-red-600">Enter at least two valid numeric points.</p> : null}
+          {trend ? (
+            <p className="mt-2 text-xs text-gray-700">
+              Trendline (linear regression): y = {trend.slope.toFixed(3)}x + {trend.intercept.toFixed(3)}
+            </p>
+          ) : null}
         </div>
       </div>
     );
