@@ -16,13 +16,25 @@ function parseExplanationJson(content) {
   if (!Array.isArray(parsed.steps)) {
     throw new Error('Missing steps array in model response');
   }
-  const steps = parsed.steps.slice(0, 5).map((step, index) => ({
-    id: typeof step.id === 'number' ? step.id : index + 1,
-    heading: String(step.heading || `Step ${index + 1}`),
-    description: String(step.description || ''),
-    interactionType: String(step.interactionType || 'text'),
-    content: step.content && typeof step.content === 'object' ? step.content : { mainText: '' },
-  }));
+  const validInteractionTypes = new Set([
+    'text',
+    'button_demo',
+    'slider',
+    'animation',
+    'comparison',
+    'plot',
+  ]);
+  const steps = parsed.steps.slice(0, 5).map((step, index) => {
+    const interactionType = String(step.interactionType || 'text');
+    const safeInteractionType = validInteractionTypes.has(interactionType) ? interactionType : 'text';
+    return {
+      id: typeof step.id === 'number' ? step.id : index + 1,
+      heading: String(step.heading || `Step ${index + 1}`),
+      description: String(step.description || ''),
+      interactionType: safeInteractionType,
+      content: step.content && typeof step.content === 'object' ? step.content : { mainText: '' },
+    };
+  });
   return {
     title: parsed.title,
     description: typeof parsed.description === 'string' ? parsed.description : '',
@@ -52,13 +64,19 @@ Return ONLY valid JSON (no markdown fences, no explanations outside JSON):
       "id": 1,
       "heading": "Step title",
       "description": "Explanation text (max 100 words)",
-      "interactionType": "text | button_demo | slider | animation | comparison",
+      "interactionType": "text | button_demo | slider | animation | comparison | plot",
       "content": {
         "mainText": "Explanation",
         "buttonLabel": "Optional",
         "sliderMin": 0,
         "sliderMax": 100,
-        "animationDescription": "What happens"
+        "animationDescription": "What happens",
+        "plotType": "line | bar | scatter",
+        "x": [0, 1, 2, 3],
+        "y": [0, 1, 4, 9],
+        "xLabel": "X axis label",
+        "yLabel": "Y axis label",
+        "plotTitle": "Optional chart title"
       }
     }
   ]
@@ -69,7 +87,8 @@ Rules:
 - Each step under 100 words.
 - Use simple, clear language.
 - Include at least one step where interactionType is not "text" (e.g. button_demo or slider).
-- interactionType must be one of: text, button_demo, slider, animation, comparison.`;
+- If the topic is graph/curve/trend/function/data related, include one "plot" step with numeric x/y arrays of equal length.
+- interactionType must be one of: text, button_demo, slider, animation, comparison, plot.`;
 
   const url = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
   const controller = new AbortController();

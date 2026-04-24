@@ -1,8 +1,39 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Scatter,
+  ScatterChart,
+  Tooltip,
+  XAxis,
+  YAxis,
+  Bar,
+  BarChart,
+} from 'recharts';
 
 function clamp(n, min, max) {
   return Math.min(max, Math.max(min, n));
+}
+
+function buildPlotData(content) {
+  const rawX = Array.isArray(content.x) ? content.x : [];
+  const rawY = Array.isArray(content.y) ? content.y : [];
+  const len = Math.min(rawX.length, rawY.length);
+  if (len < 2) {
+    return null;
+  }
+  const rows = [];
+  for (let i = 0; i < len; i += 1) {
+    const x = Number(rawX[i]);
+    const y = Number(rawY[i]);
+    if (Number.isFinite(x) && Number.isFinite(y)) {
+      rows.push({ x, y });
+    }
+  }
+  return rows.length >= 2 ? rows : null;
 }
 
 export function InteractiveRenderer({ step }) {
@@ -88,6 +119,56 @@ export function InteractiveRenderer({ step }) {
         <div className="rounded-lg border border-line bg-white p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{rightTitle}</p>
           <p className="mt-2 text-sm text-gray-700">{rightBody}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'plot') {
+    const data = buildPlotData(content);
+    const plotType = ['line', 'bar', 'scatter'].includes(content.plotType) ? content.plotType : 'line';
+    const xLabel = content.xLabel || 'X';
+    const yLabel = content.yLabel || 'Y';
+    if (!data) {
+      return (
+        <div className="mt-4 rounded-lg border border-line bg-surfaceMuted p-4 text-sm text-gray-800">
+          Plot data is missing or invalid for this step.
+        </div>
+      );
+    }
+    return (
+      <div className="mt-4 rounded-lg border border-line bg-white p-4">
+        {content.plotTitle ? <p className="mb-3 text-sm font-medium text-ink">{content.plotTitle}</p> : null}
+        <div className="h-64 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            {plotType === 'bar' ? (
+              <BarChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="x" label={{ value: xLabel, position: 'insideBottom', offset: -4 }} />
+                <YAxis label={{ value: yLabel, angle: -90, position: 'insideLeft' }} />
+                <Tooltip />
+                <Bar dataKey="y" fill="#7C3AED" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            ) : null}
+            {plotType === 'scatter' ? (
+              <ScatterChart>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" dataKey="x" name={xLabel} label={{ value: xLabel, position: 'insideBottom', offset: -4 }} />
+                <YAxis type="number" dataKey="y" name={yLabel} label={{ value: yLabel, angle: -90, position: 'insideLeft' }} />
+                <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                <Scatter data={data} fill="#7C3AED" />
+              </ScatterChart>
+            ) : null}
+            {plotType === 'line' ? (
+              <LineChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="x" label={{ value: xLabel, position: 'insideBottom', offset: -4 }} />
+                <YAxis label={{ value: yLabel, angle: -90, position: 'insideLeft' }} />
+                <Tooltip />
+                <Line type="monotone" dataKey="y" stroke="#7C3AED" strokeWidth={2} dot={false} />
+              </LineChart>
+            ) : null}
+          </ResponsiveContainer>
         </div>
       </div>
     );
