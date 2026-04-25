@@ -96,22 +96,29 @@ Rules:
 
   let response;
   try {
-    response = await fetch(url, {
-      method: 'POST',
-      signal: controller.signal,
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'HTTP-Referer': referer,
-        'X-Title': title,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
-        max_tokens: 1500,
-      }),
-    });
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'HTTP-Referer': referer,
+          'X-Title': title,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7,
+          max_tokens: 1500,
+        }),
+      });
+    } catch (networkErr) {
+      const reason = networkErr?.cause?.code || networkErr?.cause?.message || networkErr?.message;
+      const err = new Error(`OpenRouter connection failed: ${reason || 'Network error'}`);
+      err.status = 502;
+      throw err;
+    }
   } finally {
     clearTimeout(timeout);
   }
@@ -119,7 +126,14 @@ Rules:
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    const msg = data?.error?.message || data?.message || `OpenRouter error (${response.status})`;
+    const providerCode = data?.error?.code || data?.code || '';
+    const providerMessage = data?.error?.message || data?.message || `OpenRouter error (${response.status})`;
+    const details =
+      data?.error?.metadata?.raw ||
+      data?.error?.metadata?.provider_name ||
+      data?.error?.metadata?.reason ||
+      '';
+    const msg = [providerCode, providerMessage, details].filter(Boolean).join(': ');
     const err = new Error(msg);
     err.status = 502;
     throw err;

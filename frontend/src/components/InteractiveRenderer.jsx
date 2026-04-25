@@ -48,7 +48,10 @@ function toNumericRows(rows) {
   const parsed = rows
     .map((row) => ({ x: Number(row.x), y: Number(row.y) }))
     .filter((row) => Number.isFinite(row.x) && Number.isFinite(row.y));
-  return parsed.length >= 2 ? parsed : null;
+  if (parsed.length < 2) {
+    return null;
+  }
+  return parsed.sort((a, b) => a.x - b.x);
 }
 
 function calculateTrendline(points) {
@@ -222,8 +225,8 @@ export function InteractiveRenderer({ step }) {
     return (
       <div className="mt-4 rounded-lg border border-line bg-white p-4">
         {content.plotTitle ? <p className="mb-3 text-sm font-medium text-ink">{content.plotTitle}</p> : null}
-        <div className="h-64 w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-64 w-full min-w-0">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
             {plotType === 'bar' ? (
               <BarChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -240,17 +243,38 @@ export function InteractiveRenderer({ step }) {
                 <YAxis type="number" dataKey="y" name={yLabel} label={{ value: yLabel, angle: -90, position: 'insideLeft' }} />
                 <Tooltip cursor={{ strokeDasharray: '3 3' }} />
                 <Scatter data={data} fill="#7C3AED" />
-                {trend ? <Line data={trend.lineData} dataKey="y" stroke="#059669" strokeWidth={2} dot={false} legendType="none" /> : null}
+                {trend ? (
+                  <Line
+                    type="linear"
+                    data={trend.lineData}
+                    dataKey="y"
+                    stroke="#059669"
+                    strokeWidth={2}
+                    dot={false}
+                    legendType="none"
+                  />
+                ) : null}
               </ScatterChart>
             ) : null}
             {plotType === 'line' ? (
               <LineChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="x" label={{ value: xLabel, position: 'insideBottom', offset: -4 }} />
-                <YAxis label={{ value: yLabel, angle: -90, position: 'insideLeft' }} />
+                <XAxis
+                  type="number"
+                  dataKey="x"
+                  domain={['dataMin', 'dataMax']}
+                  label={{ value: xLabel, position: 'insideBottom', offset: -4 }}
+                />
+                <YAxis
+                  type="number"
+                  domain={['auto', 'auto']}
+                  label={{ value: yLabel, angle: -90, position: 'insideLeft' }}
+                />
                 <Tooltip />
-                <Line type="monotone" dataKey="y" stroke="#7C3AED" strokeWidth={2} dot={false} />
-                {trend ? <Line data={trend.lineData} dataKey="y" stroke="#059669" strokeWidth={2} dot={false} /> : null}
+                <Line type="linear" dataKey="y" stroke="#7C3AED" strokeWidth={2} dot={{ r: 3 }} />
+                {trend ? (
+                  <Line type="linear" data={trend.lineData} dataKey="y" stroke="#059669" strokeWidth={2} dot={false} />
+                ) : null}
               </LineChart>
             ) : null}
           </ResponsiveContainer>
