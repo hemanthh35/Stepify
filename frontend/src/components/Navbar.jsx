@@ -65,9 +65,21 @@ export function Navbar() {
 
             {showAuthenticatedNav ? (
               <div className="ml-2 flex items-center gap-2 rounded-xl border border-line bg-white/80 p-1.5 shadow-sm">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 text-xs font-semibold text-accent">
-                  {isRestoringSession ? '...' : userInitials}
-                </span>
+                {isRestoringSession ? (
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 text-xs font-semibold text-accent">
+                    ...
+                  </span>
+                ) : user?.avatar_url ? (
+                  <img
+                    src={user.avatar_url}
+                    alt="Profile"
+                    className="h-8 w-8 rounded-lg object-cover ring-1 ring-transparent transition-all duration-200 ease-out hover:-translate-y-0.5 hover:scale-105 hover:ring-violet-300 hover:shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
+                  />
+                ) : (
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 text-xs font-semibold text-accent">
+                    {userInitials}
+                  </span>
+                )}
                 <span className="max-w-[180px] truncate text-sm text-gray-600" title={user?.email}>
                   {isRestoringSession ? 'Restoring session...' : user?.display_name || user?.email}
                 </span>
