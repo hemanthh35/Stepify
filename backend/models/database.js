@@ -61,6 +61,28 @@ async function init() {
       FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `);
+  await ensureUserProfileColumns();
+}
+
+async function ensureUserProfileColumns() {
+  const columns = await all(`PRAGMA table_info(users)`);
+  const names = new Set(columns.map((c) => c.name));
+  const additions = [
+    ['display_name', 'TEXT'],
+    ['headline', 'TEXT'],
+    ['bio', 'TEXT'],
+    ['location', 'TEXT'],
+    ['website', 'TEXT'],
+    ['avatar_url', 'TEXT'],
+    ['github_url', 'TEXT'],
+    ['linkedin_url', 'TEXT'],
+    ['twitter_url', 'TEXT'],
+  ];
+  for (const [name, type] of additions) {
+    if (!names.has(name)) {
+      await run(`ALTER TABLE users ADD COLUMN ${name} ${type}`);
+    }
+  }
 }
 
 module.exports = {

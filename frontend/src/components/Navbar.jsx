@@ -15,9 +15,9 @@ export function Navbar() {
 
   const userInitials = useMemo(() => {
     if (!user?.email) return 'ST';
-    const name = user.email.split('@')[0];
+    const name = user?.display_name?.trim() || user.email.split('@')[0];
     return name.slice(0, 2).toUpperCase();
-  }, [user?.email]);
+  }, [user?.display_name, user?.email]);
 
   const closeMenu = () => setIsOpen(false);
 
@@ -49,9 +49,17 @@ export function Navbar() {
                 Home
               </NavLink>
               {showAuthenticatedNav ? (
-                <NavLink to="/dashboard" className={linkClass}>
-                  Dashboard
-                </NavLink>
+                <>
+                  <NavLink to="/dashboard" className={linkClass}>
+                    Dashboard
+                  </NavLink>
+                  <NavLink to="/history" className={linkClass}>
+                    History
+                  </NavLink>
+                  <NavLink to="/profile" className={linkClass}>
+                    Profile
+                  </NavLink>
+                </>
               ) : null}
             </nav>
 
@@ -61,7 +69,7 @@ export function Navbar() {
                   {isRestoringSession ? '...' : userInitials}
                 </span>
                 <span className="max-w-[180px] truncate text-sm text-gray-600" title={user?.email}>
-                  {isRestoringSession ? 'Restoring session...' : user?.email}
+                  {isRestoringSession ? 'Restoring session...' : user?.display_name || user?.email}
                 </span>
                 <button
                   type="button"
@@ -92,9 +100,17 @@ export function Navbar() {
                 Home
               </NavLink>
               {showAuthenticatedNav ? (
-                <NavLink to="/dashboard" className={linkClass} onClick={closeMenu}>
-                  Dashboard
-                </NavLink>
+                <>
+                  <NavLink to="/dashboard" className={linkClass} onClick={closeMenu}>
+                    Dashboard
+                  </NavLink>
+                  <NavLink to="/history" className={linkClass} onClick={closeMenu}>
+                    History
+                  </NavLink>
+                  <NavLink to="/profile" className={linkClass} onClick={closeMenu}>
+                    Profile
+                  </NavLink>
+                </>
               ) : null}
             </nav>
             <div className="mt-3 border-t border-line pt-3">

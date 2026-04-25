@@ -34,6 +34,12 @@ export function AuthProvider({ children }) {
     }
   }, [token, logout]);
 
+  const refreshProfile = useCallback(async () => {
+    const res = await api.get('/auth/profile');
+    setUser(res.data.user);
+    return res.data.user;
+  }, []);
+
   const login = useCallback(async (email, password) => {
     const res = await api.post('/auth/login', { email, password });
     const nextToken = res.data.token;
@@ -52,6 +58,14 @@ export function AuthProvider({ children }) {
     return res.data;
   }, []);
 
+  const updateProfile = useCallback(async (payload) => {
+    const res = await api.put('/auth/profile', payload);
+    if (res.data?.user) {
+      setUser(res.data.user);
+    }
+    return res.data;
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
@@ -59,10 +73,12 @@ export function AuthProvider({ children }) {
       loading,
       login,
       signup,
+      refreshProfile,
+      updateProfile,
       logout,
       isAuthenticated: Boolean(token && user),
     }),
-    [user, token, loading, login, signup, logout],
+    [user, token, loading, login, signup, refreshProfile, updateProfile, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

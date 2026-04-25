@@ -6,6 +6,28 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function normalizeString(value, max = 255) {
+  if (typeof value !== 'string') return '';
+  return value.trim().slice(0, max);
+}
+
+function formatUser(row) {
+  return {
+    id: row.id,
+    email: row.email,
+    created_at: row.created_at,
+    display_name: row.display_name || '',
+    headline: row.headline || '',
+    bio: row.bio || '',
+    location: row.location || '',
+    website: row.website || '',
+    avatar_url: row.avatar_url || '',
+    github_url: row.github_url || '',
+    linkedin_url: row.linkedin_url || '',
+    twitter_url: row.twitter_url || '',
+  };
+}
+
 function signToken(user) {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
@@ -116,19 +138,75 @@ function logout(req, res) {
 
 async function profile(req, res, next) {
   try {
-    const row = await get('SELECT id, email, created_at FROM users WHERE id = ?', [req.user.id]);
+    const row = await get(
+      `SELECT
+        id, email, created_at,
+        display_name, headline, bio, location, website, avatar_url,
+        github_url, linkedin_url, twitter_url
+       FROM users
+       WHERE id = ?`,
+      [req.user.id],
+    );
     if (!row) {
       const err = new Error('User not found');
       err.status = 404;
       throw err;
     }
-    res.json({
-      user: {
-        id: row.id,
-        email: row.email,
-        created_at: row.created_at,
-      },
-    });
+    res.json({ user: formatUser(row) });
+  } catch (e) {
+    next(e);
+  }
+}
+
+async function updateProfile(req, res, next) {
+  try {
+    const payload = req.body || {};
+    const displayName = normalizeString(payload.display_name, 80);
+    const headline = normalizeString(payload.headline, 140);
+    const bio = normalizeString(payload.bio, 600);
+    const location = normalizeString(payload.location, 100);
+    const website = normalizeString(payload.website, 255);
+    const avatarUrl = normalizeString(payload.avatar_url, 200000);
+    const githubUrl = normalizeString(payload.github_url, 255);
+    const linkedinUrl = normalizeString(payload.linkedin_url, 255);
+    const twitterUrl = normalizeString(payload.twitter_url, 255);
+
+    await run(
+      `UPDATE users SET
+        display_name = ?,
+        headline = ?,
+        bio = ?,
+        location = ?,
+        website = ?,
+        avatar_url = ?,
+        github_url = ?,
+        linkedin_url = ?,
+        twitter_url = ?
+      WHERE id = ?`,
+      [
+        displayName,
+        headline,
+        bio,
+        location,
+        website,
+        avatarUrl,
+        githubUrl,
+        linkedinUrl,
+        twitterUrl,
+        req.user.id,
+      ],
+    );
+
+    const updated = await get(
+      `SELECT
+        id, email, created_at,
+        display_name, headline, bio, location, website, avatar_url,
+        github_url, linkedin_url, twitter_url
+       FROM users
+       WHERE id = ?`,
+      [req.user.id],
+    );
+    res.json({ success: true, user: formatUser(updated) });
   } catch (e) {
     next(e);
   }
@@ -139,4 +217,5 @@ module.exports = {
   login,
   logout,
   profile,
+  updateProfile,
 };
