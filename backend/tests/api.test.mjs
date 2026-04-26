@@ -106,4 +106,22 @@ describe('Protected API', () => {
     expect(Array.isArray(res.body.history)).toBe(true);
     expect(res.body.history.length).toBeGreaterThan(0);
   });
+
+  it('deletes a history item by id', async () => {
+    const listBefore = await request(app)
+      .get('/api/history')
+      .set('Authorization', `Bearer ${token}`);
+    const targetId = listBefore.body.history[0].id;
+
+    const del = await request(app)
+      .delete(`/api/history/${targetId}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(del.status).toBe(200);
+    expect(del.body.success).toBe(true);
+
+    const getAfter = await request(app)
+      .get(`/api/history/${targetId}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(getAfter.status).toBe(404);
+  });
 });

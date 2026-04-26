@@ -92,8 +92,31 @@ async function getHistoryItem(req, res, next) {
   }
 }
 
+async function deleteHistoryItem(req, res, next) {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) {
+      const err = new Error('Invalid history id');
+      err.status = 400;
+      throw err;
+    }
+
+    const result = await run('DELETE FROM history WHERE id = ? AND user_id = ?', [id, req.user.id]);
+    if (!result.changes) {
+      const err = new Error('History item not found');
+      err.status = 404;
+      throw err;
+    }
+
+    res.json({ success: true });
+  } catch (e) {
+    next(e);
+  }
+}
+
 module.exports = {
   generate,
   listHistory,
   getHistoryItem,
+  deleteHistoryItem,
 };
