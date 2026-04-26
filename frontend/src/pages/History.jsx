@@ -82,6 +82,9 @@ export default function History() {
           {history.map((item) => (
             <article key={item.id} className="card">
               <p className="line-clamp-2 text-base font-semibold text-ink">{item.input_prompt}</p>
+              {item.title ? (
+                <p className="mt-1 line-clamp-2 text-sm font-medium text-accent">{item.title}</p>
+              ) : null}
               <p className="mt-2 text-xs text-gray-500">{item.created_at}</p>
               <div className="mt-5 flex flex-wrap gap-2">
                 <button

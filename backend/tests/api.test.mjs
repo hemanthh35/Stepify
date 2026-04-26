@@ -105,6 +105,7 @@ describe('Protected API', () => {
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.history)).toBe(true);
     expect(res.body.history.length).toBeGreaterThan(0);
+    expect(res.body.history[0].title).toBe('Binary search');
   });
 
   it('deletes a history item by id', async () => {

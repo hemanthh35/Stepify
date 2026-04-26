@@ -13,10 +13,12 @@ async function generate(req, res, next) {
 
     const data = await generateExplanation(trimmed);
     const json = JSON.stringify(data);
+    const title =
+      typeof data.title === 'string' && data.title.trim() ? data.title.trim().slice(0, 500) : '';
 
     const insert = await run(
-      'INSERT INTO history (user_id, input_prompt, response_json) VALUES (?, ?, ?)',
-      [req.user.id, trimmed, json],
+      'INSERT INTO history (user_id, input_prompt, response_json, title) VALUES (?, ?, ?, ?)',
+      [req.user.id, trimmed, json, title],
     );
 
     res.json({
@@ -34,7 +36,7 @@ async function generate(req, res, next) {
 async function listHistory(req, res, next) {
   try {
     const rows = await all(
-      `SELECT id, input_prompt, created_at
+      `SELECT id, input_prompt, created_at, title
        FROM history
        WHERE user_id = ?
        ORDER BY datetime(created_at) DESC
@@ -46,6 +48,7 @@ async function listHistory(req, res, next) {
         id: r.id,
         input_prompt: r.input_prompt,
         created_at: r.created_at,
+        title: r.title || '',
       })),
     });
   } catch (e) {
