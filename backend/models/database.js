@@ -61,7 +61,16 @@ async function init() {
       FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `);
+  await ensureHistoryTitleColumn();
   await ensureUserProfileColumns();
+}
+
+async function ensureHistoryTitleColumn() {
+  const columns = await all(`PRAGMA table_info(history)`);
+  const names = new Set(columns.map((c) => c.name));
+  if (!names.has('title')) {
+    await run(`ALTER TABLE history ADD COLUMN title TEXT`);
+  }
 }
 
 async function ensureUserProfileColumns() {

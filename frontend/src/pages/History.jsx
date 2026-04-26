@@ -8,6 +8,7 @@ export default function History() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -34,6 +35,22 @@ export default function History() {
       cancelled = true;
     };
   }, []);
+
+  async function onDelete(id) {
+    if (!window.confirm('Remove this walkthrough from your history? This cannot be undone.')) {
+      return;
+    }
+    setDeletingId(id);
+    setError('');
+    try {
+      await api.delete(`/api/history/${id}`);
+      setHistory((prev) => prev.filter((item) => item.id !== id));
+    } catch (err) {
+      setError(err?.response?.data?.error || 'Could not delete this item.');
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:py-14">
@@ -65,14 +82,25 @@ export default function History() {
           {history.map((item) => (
             <article key={item.id} className="card">
               <p className="line-clamp-2 text-base font-semibold text-ink">{item.input_prompt}</p>
+              {item.title ? (
+                <p className="mt-1 line-clamp-2 text-sm font-medium text-accent">{item.title}</p>
+              ) : null}
               <p className="mt-2 text-xs text-gray-500">{item.created_at}</p>
-              <div className="mt-5 flex gap-2">
+              <div className="mt-5 flex flex-wrap gap-2">
                 <button
                   type="button"
                   className="btn-secondary px-3 py-2 text-xs"
                   onClick={() => navigate('/dashboard', { state: { historyId: item.id } })}
                 >
                   Open in dashboard
+                </button>
+                <button
+                  type="button"
+                  className="border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-50"
+                  disabled={deletingId === item.id}
+                  onClick={() => onDelete(item.id)}
+                >
+                  {deletingId === item.id ? 'Removing…' : 'Remove'}
                 </button>
               </div>
             </article>
