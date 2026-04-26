@@ -1,0 +1,8 @@
+#!/bin/sh
+# Drop attribution footer if a tool injects it into the commit message.
+tmpfile="${1}.strip.$$"
+if grep -q '^Made-with: Cursor$' "$1" 2>/dev/null; then
+  grep -v '^Made-with: Cursor$' "$1" > "$tmpfile" && mv "$tmpfile" "$1"
+fi
+rm -f "${1}.strip.$$"
+exit 0
