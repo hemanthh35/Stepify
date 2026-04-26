@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
+import { explanationToMarkdown } from '../lib/explanationToMarkdown.js';
 import { LoadingSpinner } from '../components/LoadingSpinner.jsx';
 import { StepCard } from '../components/StepCard.jsx';
 
@@ -12,6 +13,7 @@ export default function Dashboard() {
   const [explanation, setExplanation] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
+  const [copyHint, setCopyHint] = useState('');
 
   async function onGenerate(e) {
     e.preventDefault();
@@ -54,6 +56,20 @@ export default function Dashboard() {
     }
   }, [location.state, openHistoryItem]);
 
+  async function onCopyMarkdown() {
+    if (!explanation) return;
+    setError('');
+    setCopyHint('');
+    const text = explanationToMarkdown(explanation);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyHint('Markdown copied to clipboard.');
+      window.setTimeout(() => setCopyHint(''), 2500);
+    } catch {
+      setError('Could not copy. Your browser may block clipboard access.');
+    }
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:py-14">
       <section>
@@ -94,6 +110,7 @@ export default function Dashboard() {
                 setExplanation(null);
                 setTopic('');
                 setError('');
+                setCopyHint('');
               }}
             >
               Clear
@@ -119,6 +136,16 @@ export default function Dashboard() {
                 {explanation.description ? (
                   <p className="mt-3 text-sm leading-relaxed text-gray-700">{explanation.description}</p>
                 ) : null}
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <button type="button" className="btn-secondary px-3 py-2 text-xs" onClick={onCopyMarkdown}>
+                    Copy as Markdown
+                  </button>
+                  {copyHint ? (
+                    <span className="text-xs text-emerald-700" role="status">
+                      {copyHint}
+                    </span>
+                  ) : null}
+                </div>
               </div>
               <div className="grid gap-4">
                 {explanation.steps?.map((step, index) => (
