@@ -1,0 +1,8 @@
+---
+description: Never add Cursor attribution lines to git commits or PR descriptions
+alwaysApply: true
+---
+
+# Git and PR messages
+
+Do not append `Made-with: Cursor`, `Co-authored-by: Cursor`, or any similar attribution or trailer to commit messages, merge commits, or pull request bodies. Use only the subject and body the user or task needs.
